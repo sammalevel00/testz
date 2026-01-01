@@ -1,0 +1,43 @@
+name: Test Redroid Capability
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-binder:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check for binder
+        run: |
+          echo "=== Checking for binder device ==="
+          ls -l /dev/binder /dev/binderfs/binder 2>/dev/null || echo "No binder found"
+          
+      - name: Check kernel modules
+        run: |
+          echo "=== Checking kernel modules ==="
+          lsmod | grep binder || echo "Binder module not loaded"
+          
+      - name: Try loading binder
+        run: |
+          echo "=== Attempting to load binder_linux ==="
+          sudo modprobe binder_linux 2>&1 || echo "Failed to load"
+          lsmod | grep binder || echo "Still not loaded"
+          
+      - name: Test privileged Docker
+        run: |
+          echo "=== Testing privileged Docker ==="
+          docker run --rm --privileged alpine sh -c "ls -l /dev | head -20"
+          
+      - name: Try Redroid
+        run: |
+          echo "=== Attempting Redroid container ==="
+          docker run -d --privileged \
+            --name redroid \
+            -v ~/data:/data \
+            -p 5555:5555 \
+            redroid/redroid:11.0.0-latest || echo "Redroid failed to start"
+          
+          sleep 10
+          docker ps -a
+          docker logs redroid 2>&1 || echo "No logs available"
